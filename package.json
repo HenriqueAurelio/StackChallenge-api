@@ -1,14 +1,14 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "api/index.js",
   "type": "module",
   "author": {
     "name": "Henrique Aurelio",
     "email": "dev@henriqueaurelio.com"
   },
   "scripts": {
-    "dev": "node server"
+    "start": "node api/index.js"
   },
   "license": "MIT",
   "dependencies": {
