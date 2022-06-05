@@ -8,7 +8,9 @@ export const router = new Router();
 const prisma = new PrismaClient();
 
 router.get("/tweets", async (ctx) => {
-  const tweets = await prisma.tweet.findMany();
+  const tweets = await prisma.tweet.findMany({
+    include: { user: true },
+  });
   ctx.body = tweets;
 });
 
