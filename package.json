@@ -7,10 +7,6 @@
     "name": "Henrique Aurelio",
     "email": "dev@henriqueaurelio.com"
   },
-  "scripts": {
-    "dev": "node server",
-    "build":""
-  },
   "license": "MIT",
   "dependencies": {
     "@koa/cors": "^3.3.0",
