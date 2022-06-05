@@ -8,6 +8,19 @@ export const router = new Router();
 const prisma = new PrismaClient();
 
 router.get("/tweets", async (ctx) => {
+  const [type, token] = ctx.request.headers?.authorization?.split(" ") || [];
+  if (!token) {
+    ctx.status = 401;
+    return;
+  }
+
+  try {
+    var payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    ctx.status = 401;
+    return;
+  }
+
   const tweets = await prisma.tweet.findMany({
     include: { user: true },
   });
