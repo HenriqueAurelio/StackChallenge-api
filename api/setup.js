@@ -6,5 +6,5 @@ export const app = new Koa();
 
 app.use(cors());
 app.use(bodyParser());
-app.use(router.routes());
 app.use(router.allowedMethods());
+app.use(router.routes());
