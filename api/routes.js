@@ -8,64 +8,77 @@ export const router = new Router();
 const prisma = new PrismaClient();
 
 router.get("/tweets", async (ctx) => {
-  const [type, token] = ctx.request.headers?.authorization?.split(" ") || [];
+  const [, token] = ctx.request.headers?.authorization?.split(" ") || [];
+
   if (!token) {
     ctx.status = 401;
     return;
   }
 
   try {
-    var payload = jwt.verify(token, process.env.JWT_SECRET);
+    jwt.verify(token, process.env.JWT_SECRET);
+    const tweets = await prisma.tweet.findMany({
+      include: {
+        user: true,
+      },
+    });
+    ctx.body = tweets;
   } catch (error) {
-    ctx.status = 401;
+    if (typeof error === "JsonWebTokenError") {
+      ctx.status = 401;
+      return;
+    }
+
+    ctx.status = 500;
     return;
   }
-
-  const tweets = await prisma.tweet.findMany({
-    include: { user: true },
-  });
-  ctx.body = tweets;
 });
 
 router.post("/tweets", async (ctx) => {
-  const [type, token] = ctx.request.headers?.authorization?.split(" ") || [];
+  const [, token] = ctx.request.headers?.authorization?.split(" ") || [];
+
   if (!token) {
     ctx.status = 401;
     return;
   }
+
   try {
-    var payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const tweet = await prisma.tweet.create({
+      data: {
+        userId: payload.sub,
+        text: ctx.request.body.text,
+      },
+    });
+
+    ctx.body = tweet;
   } catch (error) {
     ctx.status = 401;
     return;
   }
-  const tweet = await prisma.tweet.create({
-    data: {
-      userId: payload.sub,
-      text: ctx.request.body.text,
-    },
-  });
-
-  ctx.body = tweet;
 });
 
 router.post("/signup", async (ctx) => {
   const saltRounds = 10;
-  const hashPassword = bcrypt.hashSync(ctx.request.body.password, saltRounds);
+  const password = bcrypt.hashSync(ctx.request.body.password, saltRounds);
 
   try {
-    const { password, ...user } = await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name: ctx.request.body.name,
         username: ctx.request.body.username,
         email: ctx.request.body.email,
-        password: hashPassword,
+        password,
       },
     });
 
-    const accessToken = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    const accessToken = jwt.sign(
+      {
+        sub: user.id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
 
     ctx.body = {
       id: user.id,
@@ -74,20 +87,20 @@ router.post("/signup", async (ctx) => {
       email: user.email,
       accessToken,
     };
-  } catch (e) {
-    if (e.meta && !e.meta.target) {
+  } catch (error) {
+    if (error.meta && !error.meta.target) {
       ctx.status = 422;
-      ctx.body = "Email ou nome de usuário já existe!";
+      ctx.body = "Email ou nome de usuário já existe.";
       return;
     }
 
     ctx.status = 500;
-    ctx.body = "Internal Error";
+    ctx.body = "Internal error";
   }
 });
 
 router.get("/login", async (ctx) => {
-  const [type, token] = ctx.request.headers.authorization.split(" ");
+  const [, token] = ctx.request.headers.authorization.split(" ");
   const [email, plainTextPassword] = Buffer.from(token, "base64")
     .toString()
     .split(":");
@@ -104,9 +117,14 @@ router.get("/login", async (ctx) => {
   const passwordMatch = bcrypt.compareSync(plainTextPassword, user.password);
 
   if (passwordMatch) {
-    const accessToken = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    const accessToken = jwt.sign(
+      {
+        sub: user.id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
     ctx.body = {
       id: user.id,
       name: user.name,
@@ -114,6 +132,9 @@ router.get("/login", async (ctx) => {
       email: user.email,
       accessToken,
     };
+
     return;
   }
+
+  ctx.status = 404;
 });
